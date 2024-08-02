@@ -1,9 +1,10 @@
 import 'package:ex2_expense_tracker/models/expenseModel.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path/path.dart' as path;
 import 'package:sqflite/sqflite.dart' as sql;
 import 'package:sqflite/sqlite_api.dart';
-import 'package:intl/intl.dart'; 
+import 'package:intl/intl.dart';
 
 final formatter = DateFormat.yMd();
 
@@ -27,31 +28,18 @@ class ExpenseProviderNotifier extends StateNotifier<List<ExpenseModel>> {
     if (data.isEmpty) {
       return;
     }
-    print(data);
 
-    print('populating');
     state = data.map((row) {
-
       String categoryName = row['category'] as String;
       String dateHolder = row['date'] as String;
-
-
       final id = row['id'] as String;
-      print(id);
       final name = row['name'] as String;
-      print(name);
       final amount = (row['amount'] as num).toDouble();
-      print(amount);
-      final cat = Category.values.firstWhere((item)=>categoryName == item.name);
-      print(cat);
+      final cat =
+          Category.values.firstWhere((item) => categoryName == item.name);
       final date = formatter.parse(dateHolder);
-      print(date);
       return ExpenseModel(
-          insertedId: id,
-          title: name,
-          cost: amount,
-          category: cat,
-          date: date);
+          insertedId: id, title: name, cost: amount, category: cat, date: date);
     }).toList();
   }
 
@@ -79,12 +67,42 @@ class ExpenseProviderNotifier extends StateNotifier<List<ExpenseModel>> {
     ];
     return;
   }
-void deleteDatabase() async {
-  final db = await _getDatabase();
-  await db.delete('expenses_list');
-}
-}
 
+  void deleteExpense(String id, BuildContext context) async {
+    final expense = state.firstWhere((item) => item.id == id);
+    final expenseIndex =
+        state.indexOf(expense);
+
+    state = state.where((item) => item.id != id).toList();
+    ScaffoldMessenger.of(context).clearSnackBars();
+    final isItemDeleted =  await ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: const Text(
+            'You just Deleted an expense, do you wish to restore it ?'),
+        action: SnackBarAction(label: 'Restore', onPressed: (){
+          List newList = [...state];
+          newList.insert(expenseIndex, expense);
+          state = [...newList];
+        }),
+        duration: const Duration(seconds: 1),
+      ),
+    ).closed.then((result)=>result != SnackBarClosedReason.action);
+    
+    if(!isItemDeleted){ return ; }
+    try{
+      final db = await _getDatabase();
+      await db.delete('expenses_list', where: 'id = ?', whereArgs: [id]);
+    } catch(err){
+      print(err);
+    }
+
+  }
+
+  void deleteDatabase() async {
+    final db = await _getDatabase();
+    await db.delete('expenses_list');
+  }
+}
 
 final expenseProvider =
     StateNotifierProvider<ExpenseProviderNotifier, List<ExpenseModel>>(
