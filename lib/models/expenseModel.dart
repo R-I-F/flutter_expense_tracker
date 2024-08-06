@@ -37,3 +37,20 @@ class ExpenseModel {
   final DateTime date;
   final String id;
 }
+
+class ExpenseBucket {
+  const ExpenseBucket({required this.expenses , required this.expenseCategory});
+  ExpenseBucket.forCategory({required List<ExpenseModel> allExpenses ,required this.expenseCategory}) : 
+  expenses = allExpenses.where((expense)=>expense.category == expenseCategory).toList();
+
+  double get totalExpense {
+    double sum = 0.0;
+    for(var exp in expenses){
+      sum += exp.cost;
+    }
+    return sum;
+  } 
+
+  final List<ExpenseModel> expenses; 
+  final Category expenseCategory;
+}
